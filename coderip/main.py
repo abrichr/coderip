@@ -63,7 +63,10 @@ LLM API
 
 prompts
 ---
-jinja2 templates e.g. "my-prompt.j2"
+- jinja2 templates e.g. "my-prompt.j2"
+- can be dynamically generated via model completions
+  - e.g. prompt = DynamicPrompt(input="...", desired_output="...", additional_context="i want this prompt to do x/y using a/b")
+    saves to template automatically for re-use / determinis
 
 message types / data model
 --
@@ -83,9 +86,10 @@ Hook into Github Issues to automatically ingest and fix
 
 modes
 ---
-- primary: compose loop
-- secondary: backlog grooming loop
-- secondary: cleanup loop
+- (primary) compose loop: write code
+- (secondary) issue loop: groom backlog
+- (secondary) pr loop: review and merge pull requests
+- (secondary) meta loop: view stats/history, undo/redo
 
 compose loop
 ---
