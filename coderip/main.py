@@ -96,6 +96,11 @@ message types / data model
     - edit code
     - run commands
 
+bookmarks
+---
+implement the notion of bookmarks, analogous to `git reflog`,
+allowing the user to resume dialog from some point in history
+
 Issue API
 ---
 Hook into Github Issues to automatically ingest and fix
@@ -399,6 +404,30 @@ def generate_dynamic_prompt(input_str, desired_output, context):
         # Logic to generate prompt dynamically
         # Save to a template or database for reuse
         pass
+
+
+# build the workflow agent
+
+from llmstatemachine.workflow_agent import WorkflowAgentBuilder, set_next_state
+
+def init_func():
+    # Initialization logic
+    set_next_state("WatchingFiles")
+
+def watch_files_func():
+    # File watching logic
+    set_next_state("ProcessingInput")
+
+# ... define other functions for each state ...
+
+builder = WorkflowAgentBuilder()
+builder.add_system_message("Starting CodeRip...")
+builder.add_state_and_transitions("INIT", {init_func})
+builder.add_state_and_transitions("WatchingFiles", {watch_files_func})
+# ... add other states and transitions ...
+
+workflow_agent = builder.build()
+
 
 
 if __name__ == "__main__":
