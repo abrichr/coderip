@@ -13,7 +13,7 @@ cd coderip && poetry install
 
 # Run
 ```
-coderip.py my/project/path [my_process_name]  # hook into stdin/stderr
+poetry run python coderip/main.py my/project_path [my_process_name]  # TODO: hook into stdin/stderr
 ```
 
 # Usage
