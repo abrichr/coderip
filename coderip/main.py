@@ -117,6 +117,7 @@ import argparse
 import threading
 from typing import Dict, List
 from dataclasses import dataclass
+from pprint import pformat
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import os
@@ -124,13 +125,12 @@ import re
 import subprocess
 import psutil
 import openai
-from dotenv import load_dotenv
 from loguru import logger
 from openai import OpenAI
 
-load_dotenv()
+from coderip import config
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = config.OPENAI_API_KEY
 
 @dataclass(frozen=True)
 class File:
@@ -223,13 +223,16 @@ def get_model_response(prompt: str, model: str = "gpt-4-1106-preview") -> str:
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", "YOUR_API_KEY"))
 
     try:
+        messages = [
+            {"role": "system", "content": config.SYSTEM_MESSAGE},
+            {"role": "user", "content": prompt}
+        ]
+        logger.info(f"messages=\n{pformat(messages)}")
         response = client.chat.completions.create(
             model=model,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
+            messages=messages,
         )
+        logger.info(f"response=\n{pformat(response)}")
         model_response = response.choices[0].message.content
         logger.info(f"Model response {model_response=}")
         return model_response
