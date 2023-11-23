@@ -141,6 +141,8 @@ loop/graph primitive examples:
 ---
 refactor a file into separate files
 implement missing functionality in a file
+get the list of "active" files, i.e. files that we have recently touched and/or the LLM has mentioned
+given a list of active files, their code so far, provide the contents of <active_file_1>[, <active_file_2>, ...]
 
 TODO
 ---
@@ -156,6 +158,7 @@ ideas
 - keep track of TODOs
 - provide a meta-language for driving dialog/state (e.g. YAML + natural language behavior description)
 - implement workflows to allow user to create behavior templates specified in meta-language
+- "/todo <description of thing to do>": gets added to next code generation request
 
 """
 
