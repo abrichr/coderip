@@ -102,6 +102,7 @@ modes: state machines navigated via auto-prompts with user feedback
 - (secondary) resolve loop/graph/state: groom Issue backlog
 - (secondary) review loop/graph/state: review and merge Pull Requests
 - (secondary) meta loop/graph/state: view stats/history, undo/redo
+- (tertiary) tutor loop/graph/state: tutorial mode (beginner/advanced)
 
 compose loop/graph
 ---
