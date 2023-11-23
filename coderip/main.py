@@ -131,9 +131,16 @@ TODO
 - optionally disable writes (caution: removes history)
 - follow links to documentation
 
+goals
+---
+- convert natural language descriptions of code design/implementation into tested code
+
 ideas
 ---
 - keep track of TODOs
+- provide a meta-language for driving dialog/state (e.g. YAML + natural language behavior description)
+- implement workflows to allow user to create behavior templates specified in meta-language
+
 """
 
 import argparse
