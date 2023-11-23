@@ -2,7 +2,7 @@
 
 Usage:
 
-    $ coderip.py path/to/source/dir "<executable filter>"
+    $ poetry run python coderip/main.py my/project_path ["<process name>"] # TODO
 
 code input:
 ---
