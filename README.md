@@ -1,5 +1,5 @@
 CodeRip: write code *fast*
-
+```
 User -> CodeRip -> LLM
           |-- APIs:
           |---- OpenAI / HuggingFace / llama.cpp
@@ -11,7 +11,7 @@ User -> CodeRip -> LLM
           |---- composition
           |---- Issue Review (backlog grooming)
           |---- PR Review (merging)
-
+```
 (Unstable.)
 
 See top of `coderip/main.py` for more.
