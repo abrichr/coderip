@@ -119,17 +119,28 @@ Represent configurable meta-behavior in yaml/json
 
 compose loop/graph
 ---
+# TODO
+
+loop/graph primitives
+---
+
 Action:
     - new/edit code
         - "Let's implement the code described by this design:"
     - new/edit design
         - "Let's think about how to implement a new feature:"
+	- V
 
 Message:
     - action
     - arguments
     - type
         e.g. transpile
+
+loop/graph primitive examples:
+---
+refactor a file into separate files
+implement missing functionality in a file
 
 TODO
 ---
