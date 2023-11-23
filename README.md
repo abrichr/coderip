@@ -8,8 +8,9 @@ Write code *fast*.
 
 ```
 User -> CodeRip -> LLM
-          |-- APIs:
-          |---- hosted (OpenAI / HuggingFace) & offline (llama.cpp)
+          |-- provider APIs:
+          |---- hosted (OpenAI / HuggingFace)
+          |---- offline (llama.cpp)
           |-- data model:
           |---- source: source code on disk
           |---- issue/pr: Github Issues/PRs
@@ -18,8 +19,9 @@ User -> CodeRip -> LLM
           |---- compose / build mode
           |---- review mode
           |------ Issue (backlog grooming)
-          |------ PR (merging)
+          |------ PR (review & merging)
           |-- "crip" CLI tool (python-fire)
+          |-- ...
 ```
 
 (Unstable.)
