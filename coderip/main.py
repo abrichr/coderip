@@ -81,7 +81,13 @@ Issue API
 ---
 Hook into Github Issues to automatically ingest and fix
 
-User Loop
+modes
+---
+- primary: compose loop
+- secondary: backlog grooming loop
+- secondary: cleanup loop
+
+compose loop
 ---
 TODO
 
