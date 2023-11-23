@@ -82,8 +82,11 @@ message types / data model
     - coderip_prompt
     - "cripcrip": internal interface (library/cli) for API documentation scraping / automated web browsing
 - meta
-    - extract code
-    - extract commands
+    - extract code -> edit code
+    - extract commands -> run commands
+    - transpile from/to language
+    - generate tests
+        - generate synthetic data for testing
 - acions:
     - edit code
     - run commands
