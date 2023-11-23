@@ -45,6 +45,9 @@ code insertion
   - section version number (monotonically increasing)
   - hash and/or id corresponding to the prompt which generated this
   - model identifier (e.g. gpt-4-1106-preview)
+  - ultimately it should be configurable whether to store all data in the comments for
+    maximum portability, or make minimal changes to source code (e.g. #<hash>)
+    and store data in coderip.db (SQLite, optionally sync to S3/Postgres/Github)
 
 LLM API
 ---
