@@ -2,7 +2,7 @@
 
 Usage:
 
-	$ coderip.py path/to/source/dir "<executable filter>"
+    $ coderip.py path/to/source/dir "<executable filter>"
 
 code input:
 ---
@@ -35,6 +35,13 @@ prompting
 output parsing
 ---
 - get map of label -> code section
+- multiple labeled sections demarcated by:
+    #|open<:label>
+    ```
+    ...
+    ```
+    #|close<:label>
+- if not properly formatted, iterate through secondary prompt to extract/reformat
 
 code insertion
 ---
@@ -54,6 +61,35 @@ LLM API
 - OpenAI GPT-4 preview
 - add Cohere.ai for when GPT-4 goes down.
 
+prompts
+---
+jinja2 templates e.g. "my-prompt.j2"
+
+message types / data model
+--
+- source code
+- feedback signal
+    - runtime
+    - user_prompt
+    - coderip_prompt
+    - API documentation
+- meta
+    - extract commands -> run commands
+    - extract code -> reformat code
+
+Issue API
+---
+Hook into Github Issues to automatically ingest and fix
+
+User Loop
+---
+TODO
+
+TODO
+---
+- optionally disable writes (caution: removes history)
+- follow links to documentation
+
 ideas
 ---
 - keep track of TODOs
@@ -70,9 +106,13 @@ import re
 import subprocess
 import psutil
 import openai
+from dotenv import load_dotenv
 from loguru import logger
+from openai import OpenAI
 
-openai.api_key = os.getenv("OPENAI_API_KEY", "YOUR_API_KEY")
+load_dotenv()
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 @dataclass(frozen=True)
 class File:
@@ -101,11 +141,15 @@ class TagFinder(FileSystemEventHandler):
 
     def update_tags(self, file_path: str):
         logger.info(f"Updating tags {file_path=}")
-        if not os.path.exists(file_path):
+        if not os.path.exists(file_path) or file_path.endswith('.lock') or '.git' in file_path:
             return
 
-        with open(file_path, 'r') as file:
-            lines = file.readlines()
+        try:
+            with open(file_path, 'r') as file:
+                lines = file.readlines()
+        except UnicodeDecodeError:
+            logger.warning(f"Skipping non-text file: {file_path}")
+            return
 
         sections = []
         start_line = None
@@ -153,12 +197,30 @@ def monitor_output(executable_name: str):
             except Exception as e:
                 logger.error(f"Error monitoring process {e=}")
 
+
 def get_model_response(prompt: str, model: str = "gpt-4-1106-preview") -> str:
     logger.info(f"Getting model response {prompt=} {model=}")
-    response = openai.Completion.create(engine=model, prompt=prompt, max_tokens=150)
-    model_response = response.choices[0].text.strip()
-    logger.info(f"Model response {model_response=}")
+
+    # Create an instance of the OpenAI client
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", "YOUR_API_KEY"))
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        model_response = response.choices[0].message.content
+        logger.info(f"Model response {model_response=}")
+        return model_response
+    except Exception as e:
+        logger.error(f"Error in getting model response: {e}")
+        return "Error: Could not get response from model."
+
     return model_response
+
 
 def execute_command(command: str):
     logger.info(f"Executing command {command=}")
