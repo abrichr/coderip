@@ -23,24 +23,26 @@ thread/process to monitor application output in stdout/stderr
 main thread
 ---
 - read section markers and process output
-- displaying them to the user
-- allowing the user to select them (optionally using labels) for insertion into a prompt
+- display them to the user
+- allow the user to select them (optionally using labels) for insertion into a prompt
 - allow user to specify custom instructions
 
 prompting
 ---
 - prompt model such that it only generates valid code
-- demarcated by the relevant labels associated with each section of code
+  demarcated by the relevant labels associated with each code section
 
 output parsing
 ---
-- get map of label -> code section
+- get map of "label ->" "code section"
 - multiple labeled sections demarcated by:
-    #|open<:label>
-    ```
+
+    #|open<:label[<.id>]>
     ...
-    ```
-    #|close<:label>
+    #|close<:label[<.id>]>
+
+- support configurable "verbs" (e.g. "open"/"close", ...?)
+    
 - if not properly formatted, iterate through secondary prompt to extract/reformat
 
 code insertion
@@ -55,11 +57,14 @@ code insertion
   - ultimately it should be configurable whether to store all data in the comments for
     maximum portability, or make minimal changes to source code (e.g. #<hash>)
     and store data in coderip.db (SQLite, optionally sync to S3/Postgres/Github)
+- add optional "rip" mode to rip out metadata and produce production output
 
 LLM API
 ---
 - OpenAI GPT-4 preview
-- add Cohere.ai for when GPT-4 goes down.
+- add Cohere.ai for when GPT-4 goes down
+- HuggingFace for hosted open-source
+- ollama for offline
 
 prompts
 ---
@@ -75,23 +80,26 @@ message types / data model
     - runtime
     - user_prompt
     - coderip_prompt
-    - API documentation
+    - "cripcrip": internal interface (library/cli) for API documentation scraping / automated web browsing
 - meta
-    - extract commands -> run commands
-    - extract code -> reformat code
+    - extract code
+    - extract commands
+- acions:
+    - edit code
+    - run commands
 
 Issue API
 ---
 Hook into Github Issues to automatically ingest and fix
 
-modes
+modes: state machines navigated via auto-prompts with user feedback
 ---
-- (primary) compose loop: write code
-- (secondary) issue loop: groom backlog
-- (secondary) pr loop: review and merge pull requests
-- (secondary) meta loop: view stats/history, undo/redo
+- (primary) compose loop/graph/state: write code
+- (secondary) issue loop/graph/state: groom backlog
+- (secondary) pr loop/graph/state: review and merge pull requests
+- (secondary) meta loop/graph/state: view stats/history, undo/redo
 
-compose loop
+compose loop/graph
 ---
 TODO
 
