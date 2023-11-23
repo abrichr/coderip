@@ -77,9 +77,10 @@ message types / data model
 --
 - source code
 - feedback signal
-    - runtime
-    - user_prompt
-    - coderip_prompt
+    - stderr/stderr
+    - prompt
+        - user_prompt
+        - coderip_prompt
     - "cripcrip": internal interface (library/cli) for API documentation scraping / automated web browsing
 - meta
     - extract code -> edit code
@@ -98,8 +99,8 @@ Hook into Github Issues to automatically ingest and fix
 modes: state machines navigated via auto-prompts with user feedback
 ---
 - (primary) compose loop/graph/state: write code
-- (secondary) issue loop/graph/state: groom backlog
-- (secondary) pr loop/graph/state: review and merge pull requests
+- (secondary) resolve loop/graph/state: groom Issue backlog
+- (secondary) review loop/graph/state: review and merge Pull Requests
 - (secondary) meta loop/graph/state: view stats/history, undo/redo
 
 compose loop/graph
