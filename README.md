@@ -19,7 +19,8 @@ User -> CodeRip -> LLM
 
 See top of `coderip/main.py` for more.
 
-<img width="1510" alt="image" src="https://github.com/abrichr/coderip/assets/774615/7b7deedc-72f2-4f65-915c-c49de86a695f">
+<img width="603" alt="image" src="https://github.com/abrichr/coderip/assets/774615/f5a1013a-dc87-4705-bc30-2670b40ab036">
+
 
 ## Clone
 
