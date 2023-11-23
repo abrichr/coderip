@@ -24,7 +24,7 @@ See top of `coderip/main.py` for more.
 ## Clone
 
 ```
-git clone https://<TODO>
+git clone [https://<TODO>](https://github.com/abrichr/coderip.git)
 ```
 
 
