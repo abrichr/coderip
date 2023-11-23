@@ -85,10 +85,14 @@ message types / data model
 - meta
     - extract code -> edit code
     - extract commands -> run commands
-    - transpile from/to language
+    - transpile code/natural language from/to code/comments/natural language
+        - code -> natural language
+        - code language A -> code language B
+        - ```<natural language>\n<code>\n<natural language>\n<code>...```
+            -> ```# <natural language>\n<code>\n#<natural language>\n<code>```
     - generate tests
         - generate synthetic data for testing
-- acions:
+- actions:
     - edit code
     - run commands
 
@@ -104,9 +108,23 @@ modes: state machines navigated via auto-prompts with user feedback
 - (secondary) meta loop/graph/state: view stats/history, undo/redo
 - (tertiary) tutor loop/graph/state: tutorial mode (beginner/advanced)
 
+loop/state/graph
+---
+Represent configurable meta-behavior in yaml/json
+
 compose loop/graph
 ---
-TODO
+Action:
+    - new/edit code
+        - "Let's implement the code described by this design:"
+    - new/edit design
+        - "Let's think about how to implement a new feature:"
+
+Message:
+    - action
+    - arguments
+    - type
+        e.g. transpile
 
 TODO
 ---
@@ -130,6 +148,7 @@ import re
 import subprocess
 import psutil
 import openai
+import time
 from loguru import logger
 from openai import OpenAI
 
@@ -209,17 +228,26 @@ def watch_directory(path: str, tag_data: TagData, data_lock: threading.Lock):
 
 def monitor_output(executable_name: str):
     logger.info(f"Monitoring output {executable_name=}")
+    output_data = []
+
     for proc in psutil.process_iter(['pid', 'name']):
-        if proc.info['name'] == executable_name:
+        #if proc.info['name'] == executable_name:
+        if executable_name.lower() in proc.info['name'].lower():
             try:
                 process = psutil.Process(proc.info['pid'])
                 stdout, stderr = process.communicate()
-                logger.info(f"Captured output {stdout=} {stderr=}")
-                print(f"STDOUT:\n{stdout.decode('utf-8')}")
-                print(f"STDERR:\n{stderr.decode('utf-8')}")
+                output_info = {
+                    "pid": proc.info['pid'],
+                    "stdout": stdout.decode('utf-8'),
+                    "stderr": stderr.decode('utf-8')
+                }
+                output_data.append(output_info)
+                logger.info(f"Captured output for PID {proc.info['pid']}: {output_info}")
             except Exception as e:
                 logger.error(f"Error monitoring process {e=}")
 
+    logger.info(f"Output data=\n{pformat(output_data)}")
+    return output_data
 
 def get_model_response(prompt: str, model: str = "gpt-4-1106-preview") -> str:
     logger.info(f"Getting model response {prompt=} {model=}")
@@ -263,6 +291,10 @@ def user_interaction_interface(tag_data: TagData, data_lock: threading.Lock):
                 print(f"{file.name} ({file.path}):")
                 for section in sections:
                     print(f"  - Lines {section.start_line}-{section.end_line}, Label: {section.label}")
+
+        # allow TagFinder to initialize
+        # TODO: use a threading.Event
+        time.sleep(1)
 
         user_input = input("\nSelect a section by typing the file name and line range, or type 'exit': ")
         logger.info(f"User input {user_input=}")
@@ -308,6 +340,59 @@ def main():
         monitor_thread.start()
 
     user_interaction_interface(tag_data, data_lock)
+
+# message data model
+
+from dataclasses import dataclass
+
+@dataclass
+class SourceCodeMessage:
+    code: str
+    label: str
+
+@dataclass
+class FeedbackMessage:
+    stdout: str
+    stderr: str
+    user_prompt: str
+    coderip_prompt: str
+    # Additional fields...
+
+@dataclass
+class MetaMessage:
+    # Fields related to code editing, command running, etc.
+    pass
+
+def process_source_code(message: SourceCodeMessage):
+    # Logic to handle source code
+    pass
+
+def process_feedback(message: FeedbackMessage):
+    # Logic to handle feedback
+    pass
+
+def process_meta(message: MetaMessage):
+    # Logic to handle meta actions
+    pass
+
+
+def main_loop():
+    while True:
+        # Code to read messages (e.g., from file system or user input)
+        # Determine message type and process accordingly
+        # Example:
+        if isinstance(message, SourceCodeMessage):
+            process_source_code(message)
+        elif isinstance(message, FeedbackMessage):
+            process_feedback(message)
+        # More conditions based on message type...
+
+
+def generate_dynamic_prompt(input_str, desired_output, context):
+        # Logic to generate prompt dynamically
+        # Save to a template or database for reuse
+        pass
+
 
 if __name__ == "__main__":
     main()
