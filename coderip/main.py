@@ -8,6 +8,50 @@ Usage:
     $ poetry run python coderip/main.py my/project_path ["<process name>"] # TODO
 ```
 
+## Design Outline
+
+### Core Functionalities:
+
+File Monitoring: Automatically watches for changes in specified files or directories and tags them for processing.
+User Interaction: Handles user inputs for selecting code sections and issuing commands.
+Language Model Integration: Connects with an LLM (e.g., GPT-4) to generate code or commands based on user inputs and monitored file changes.
+Command Execution: Executes system or library commands and provides feedback.
+
+### Workflow Management:
+
+Main Loop: Central loop to coordinate the flow of the application.
+Action Handler: Process user inputs and system events to determine the next action.
+State Management: Tracks the current state of the application, including user requests, file changes, and LLM interactions.
+
+### LLM API Integration:
+
+Dynamic Prompts: Generates prompts for the LLM based on current application state and user inputs.
+Response Processing: Interprets LLM outputs and integrates them into the application workflow.
+
+### User Interface:
+
+Command Line Interface: Provides a CLI for user interaction, offering options like selecting file sections, issuing commands, or exiting.
+Feedback Mechanism: Allows users to provide feedback on LLM suggestions and system actions.
+
+### Configuration and Setup:
+
+Environment Configuration: Uses .env files and environment variables for configuration settings.
+Initialization: Sets up the application, including loading configuration, initializing the file watcher, and starting the main loop.
+
+### Modularity:
+
+Separation of Concerns: Each major functionality (file monitoring, user interaction, LLM integration) is handled in separate modules or classes.
+Scalability: Design allows for easy extension, such as adding new types of actions or integrating additional LLM APIs.
+
+### Error Handling and Logging:
+
+Robust Error Handling: Gracefully handles errors and unexpected inputs.
+Logging: Detailed logging for debugging and tracking application flow.
+
+--
+
+## Notes
+
 ### Principles:
 
 Simpler is better.
