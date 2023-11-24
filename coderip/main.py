@@ -8,6 +8,9 @@ Usage:
     $ poetry run python coderip/main.py my/project_path ["<process name>"] # TODO
 ```
 
+> CodeRip: What's next? Here's everything we can do: ...
+> User: Let's implement a new feature: ...
+
 ## Design Outline
 
 ### Core Functionalities:
@@ -376,6 +379,8 @@ ideas
 - provide a meta-language for driving dialog/state (e.g. YAML + natural language behavior description)
 - implement workflows to allow user to create behavior templates specified in meta-language
 - "/todo <description of thing to do>": gets added to next code generation request
+- share conversations without sharing with OpenAI
+
 
 """
 
