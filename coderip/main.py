@@ -8,16 +8,40 @@ Usage:
     $ poetry run python coderip/main.py my/project_path ["<process name>"] # TODO
 ```
 
-### Design Principles:
+### Principles:
 
 Simpler is better.
 
-### Design Goals:
+### Goals:
 
-Automate all grunt work.
+Abolish grunt work.
 
-### Design:
----
+### Approach:
+
+Define and encode what "developing with an LLM" is into decomposable stages.
+
+### Design
+
+- Two kinds of actions
+    - deterministic: implemented by the coderip API
+        - library commands
+        - system commands
+    - dynamic
+        e.g. "modify the source code to implement the user's goal: <user_goal = ask_user("what should we do next?")>
+        e.g. "implement a state machine. here are the states and transition functions: ..."""
+        e.g. "take the output from the previous message and extract the following json:
+- Loop:
+    - get_next_action
+        ###
+        here is our state
+        here are our actions
+        here is our goal
+        this is our output format
+        ###
+    - execute_action
+
+###  Notes
+
 multiple (2+) LLM threads implementing separate "aspects"
 - user interface
 - source code interface (git, Github)
