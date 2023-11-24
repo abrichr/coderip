@@ -86,8 +86,9 @@ multiple (2+) LLM threads implementing separate "aspects"
         - library commands
         - system commands
     - dynamic
-        - user dialog
-        - developer dialog
+        e.g. "modify the source code to implement the developer's goal: <user_goal = ask_user("what should we do next?")>
+        e.g. "implement a state machine. here are the states and transition functions: ..."""
+        e.g. "take the output from the previous message and extract the following json:
 
 
 
