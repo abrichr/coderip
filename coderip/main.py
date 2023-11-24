@@ -81,6 +81,14 @@ multiple (2+) LLM threads implementing separate "aspects"
           by using a "utility" thread, which is a separate prompt/dialog with the model
             - e.g. "here is the state, here is the goal (e.g. figure out the capital of france), here is the last model output,
               have we accomplished the goal?
+- Simplify: two kinds of actions
+    - deterministic: implemented by the coderip API
+        - library commands
+        - system commands
+    - dynamic
+        - user dialog
+        - developer dialog
+
 
 
 ### Data Model
