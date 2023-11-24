@@ -8,10 +8,15 @@ Usage:
     $ poetry run python coderip/main.py my/project_path ["<process name>"] # TODO
 ```
 
-### Design principles
-simpler is better
+### Design Principles:
 
-### Architecture:
+Simpler is better.
+
+### Design Goals:
+
+Automate all grunt work.
+
+### Design:
 ---
 multiple (2+) LLM threads implementing separate "aspects"
 - user interface
@@ -44,6 +49,7 @@ multiple (2+) LLM threads implementing separate "aspects"
     - Application behaviour is defined in a graph
     - Each node is a (dynamic) prompt
     - Each node maintains its own history
+
 - Or only one thread is running
     - Loop:
         - "Here is state:"
@@ -67,6 +73,7 @@ multiple (2+) LLM threads implementing separate "aspects"
                   Your goal is to <goal_description> by <task_description>.
                   Your goal is to create a Pull Request by accessing the Github API.
                   ###
+
 - simplify: a single node type
     - state
     - actions
@@ -81,6 +88,7 @@ multiple (2+) LLM threads implementing separate "aspects"
           by using a "utility" thread, which is a separate prompt/dialog with the model
             - e.g. "here is the state, here is the goal (e.g. figure out the capital of france), here is the last model output,
               have we accomplished the goal?
+
 - Simplify: two kinds of actions
     - deterministic: implemented by the coderip API
         - library commands
