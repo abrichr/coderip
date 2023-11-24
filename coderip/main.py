@@ -27,7 +27,8 @@ Define and encode what "developing with an LLM" is into decomposable stages.
         - library commands
         - system commands
     - dynamic
-        e.g. "modify the source code to implement the user's goal: <user_goal = ask_user("what should we do next?")>
+        e.g. "what sections in the source code should we modify next to implement the user's goal?
+             user_goal = ask_user("what should we do next?")
         e.g. "implement a state machine. here are the states and transition functions: ..."""
         e.g. "take the output from the previous message and extract the following json:
 - Loop:
@@ -118,10 +119,45 @@ multiple (2+) LLM threads implementing separate "aspects"
         - library commands
         - system commands
     - dynamic
-        e.g. "modify the source code to implement the developer's goal: <user_goal = ask_user("what should we do next?")>
+        e.g. "modify the source code to implement the developer's goal: <user_goal = ask_user("what should we do next?")
         e.g. "implement a state machine. here are the states and transition functions: ..."""
         e.g. "take the output from the previous message and extract the following json:
 
+
+- Simplify: invert control back to user
+"Hey user, what's next? Here are your options:"
+    Edit:
+        - Edit Code: dialog context / loops per aspect (developer dialogs)
+            Main Mode Loop:
+                ###
+                Here are tags:
+                Here are other state keys:
+                Which tag would you like to address / create?
+                What would you like to do with this?
+                    Create / Edit
+                        "Construct a prompt: what to include?"
+                        "Here's the result: what's next?"
+                            Continue (next loop iteration)
+                            Change Mode Loop
+                    Complete -> Remove
+                ###
+            Test Mode Loop:
+                ###
+                Write a test for this code
+                ###
+            State Mode Loop:
+                ###
+                Here is the context from the previous mode loop:
+                    <previous_context>
+                Here is additional context on <model_state_request>
+                    <state_value>
+                Continue with the action described in the previous mode loop:
+                    <previous_action>
+                ###
+        - Create Issue
+    Review:
+        - Issues
+        - Pull Request
 
 
 ### Data Model
