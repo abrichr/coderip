@@ -160,6 +160,17 @@ multiple (2+) LLM threads implementing separate "aspects"
         - Pull Request
 
 
+Simplify: model implements interface between human and machine
+loop:
+    what does the user want to do next?
+    here is our API. what should we do next?
+        e.g. run action
+        e.g. raise exception to communicate to implementor to create a new action
+    run action
+        - developer-specified inputs and outputs
+
+
+
 ### Data Model
 
 TODO
