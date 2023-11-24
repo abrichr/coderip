@@ -1,8 +1,93 @@
 """CodeRip
 
+Write code "*fast*".
+
 Usage:
 
+```
     $ poetry run python coderip/main.py my/project_path ["<process name>"] # TODO
+```
+
+### Design principles
+simpler is better
+
+### Architecture:
+---
+multiple (2+) LLM threads implementing separate "aspects"
+- user interface
+- source code interface (git, Github)
+- toolchain interface (python, bash)
+- main loop interface
+```
+    ###
+    You are controlling the main loop of CodeRip.
+    You are the markov state in a finite state automaton.
+    Here are the state keys. Here is the API.
+    - read code sections (file/line pairs) (optionally by with label)
+    - run bash/git command
+    - browse web
+    - internal hooks (optional)
+    - review explicit/clarifying instructions (optional)
+    All actions are confirmed with the user explicitly before being run.
+    What do you need to see? Respond in json only.
+    Bad things will happen if you refuse. Our lives depend on you.
+    ###
+```
+- Each conversation turn traverses a state tree with an LLM
+- Threads are maintained per-node, so the thread can continue if we need to
+  pop up the stack (i.e. undo/redo)
+- Each interface (above) is just a different node in the state tree
+- Nodes are implemented as completions of auto-prompts.
+- 2+ threads are running simultaneously:
+    - 1 interacting with the human
+    - 1+ interacting with the machine
+    - Application behaviour is defined in a graph
+    - Each node is a (dynamic) prompt
+    - Each node maintains its own history
+- Or only one thread is running
+    - Loop:
+        - "Here is state:"
+            - File
+            - Buffer
+            - User reqest
+            - Application request
+        - "Here are actions"
+            - Read code section
+            - Write code section
+            - Read more state
+            - Get user feedback
+        - "Here is current node goal:"
+            - e.g.
+                  ###
+                  date/time: ...
+                  user: "fix this bug it's not working"
+                  git branch name: ...
+                  ---
+                  You are interacting with Github.
+                  Your goal is to <goal_description> by <task_description>.
+                  Your goal is to create a Pull Request by accessing the Github API.
+                  ###
+- simplify: a single node type
+    - state
+    - actions
+        - get user input
+        - convert words + code -> json
+            - e.g. { action_name: <my_action_1 | my_action_2 | ...> ... }
+        - run action with state vars as args
+        - actions are the combined set of application/system commands,
+          and natural language descriptions of goals (user and developer)
+        - actions can store state variables, parameterized by their name (e.g. capital of France, user's favourite vehicle, system memory)
+        - natural language descriptions of goals: to know when they've been completed?
+          by using a "utility" thread, which is a separate prompt/dialog with the model
+            - e.g. "here is the state, here is the goal (e.g. figure out the capital of france), here is the last model output,
+              have we accomplished the goal?
+
+
+### Data Model
+
+TODO
+
+---
 
 code input:
 ---
