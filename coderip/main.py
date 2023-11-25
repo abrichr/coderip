@@ -53,6 +53,16 @@ Logging: Detailed logging for debugging and tracking application flow.
 
 --
 
+## User Workflow
+
+1. User marks section(s) of relevant code with #|open<:label[<.id>]> / #|close<:label[<.id>]>
+2. User constructs prompt out of available sections & stdout/stderr (ordered by recency) <cr:open></cr:close>
+3. Result is displayed to user with relevant tags
+4. Diff before/after, merge/reject (with comment)
+5. Eventually: restore dialog/code to previous state
+
+--
+
 ## Notes
 
 ### Principles:
