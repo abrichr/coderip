@@ -393,8 +393,10 @@ ideas
 
 """
 
+#|open:main
 import argparse
 import threading
+from colorama import Fore, Style
 from typing import Dict, List
 from dataclasses import dataclass
 from pprint import pformat
@@ -409,7 +411,9 @@ import time
 from loguru import logger
 from openai import OpenAI
 
-from coderip import config
+from coderip import config, log
+
+log.configure_logging(logger, "INFO")
 
 openai.api_key = config.OPENAI_API_KEY
 
@@ -433,13 +437,24 @@ class TagFinder(FileSystemEventHandler):
         self.tag_data = tag_data
         self.data_lock = data_lock
 
+    def scan_directory(self, directory_path: str):
+        """Scans the entire directory and updates tags for all files."""
+        for root, _, files in os.walk(directory_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                self.update_tags(file_path)
+
     def on_modified(self, event):
         logger.info(f"File modified {event=}")
         if not event.is_directory:
             self.update_tags(event.src_path)
 
     def update_tags(self, file_path: str):
-        logger.info(f"Updating tags {file_path=}")
+        # Convert to a consistent relative file path format
+        relative_path = os.path.relpath(file_path)
+
+        logger.info(f"Updating tags for {relative_path}")
+
         if not os.path.exists(file_path) or file_path.endswith('.lock') or '.git' in file_path:
             return
 
@@ -447,7 +462,7 @@ class TagFinder(FileSystemEventHandler):
             with open(file_path, 'r') as file:
                 lines = file.readlines()
         except UnicodeDecodeError:
-            logger.warning(f"Skipping non-text file: {file_path}")
+            logger.warning(f"Skipping non-text file: {relative_path}")
             return
 
         sections = []
@@ -467,14 +482,64 @@ class TagFinder(FileSystemEventHandler):
                 start_label = None
 
         with self.data_lock:
-            self.tag_data[File(path=file_path, name=os.path.basename(file_path))] = sections
-            logger.info(f"Updated tag_data {self.tag_data=}")
+            # Clearing old tags for the file before updating
+            file_key = File(path=relative_path, name=os.path.basename(relative_path))
+            self.tag_data[file_key] = sections
 
-def watch_directory(path: str, tag_data: TagData, data_lock: threading.Lock):
+            logger.debug(f"Updated tag_data for {relative_path}: {sections}")
+
+    def display_tags(self, show_empty=False):
+        """Displays a formatted representation of tag data with color coding."""
+        print("\n+------------------+\n| Available tags:  |\n+------------------+")
+
+        if not self.tag_data:
+            msg = (
+                "No tags found. Add"
+                " '#|open[:<label>[.<id>]]' /"
+                " '#|close[:<label>[.<id>]]'"
+                " tags to your code."
+            )
+            print(msg)
+
+        for file, sections in self.tag_data.items():
+            if not sections and not show_empty:
+                continue  # Skip files without tags if show_empty is False
+
+            # Color coding for file path and name
+            path_display = f"{Fore.BLUE}{file.path}{Style.RESET_ALL}"
+            name_display = f"{Fore.GREEN}{file.name}{Style.RESET_ALL}"
+
+            print(f"\n{path_display} ({name_display}):")
+
+            for section in sections:
+                # Color coding for lines and labels
+                lines_display = f"{Fore.MAGENTA}Lines {section.start_line}-{section.end_line}{Style.RESET_ALL}"
+                label_display = f"{Fore.YELLOW}Label: {section.label}{Style.RESET_ALL}"
+
+                print(f"  - {lines_display}, {label_display}")
+
+    def display_tags_v2(self):
+        # ASCII box and colored output
+        print("+------------------+")
+        print("| Available tags:  |")
+        print("+------------------+")
+        
+        with self.data_lock:
+            for file, sections in self.tag_data.items():
+                if sections:  # Only display files with tags
+                    print(f"\n{file.path} ({file.name}):")
+                    for section in sections:
+                        print(f"  - Lines {section.start_line}-{section.end_line}, Label: {section.label}")
+
+def watch_directory(path: str, tag_data: TagData, data_lock: threading.Lock, tag_finder: TagFinder):
     logger.info(f"Watching directory {path=}")
-    event_handler = TagFinder(tag_data, data_lock)
+
+    # Perform initial scan of the directory
+    tag_finder.scan_directory(path)
+
+    # Set up the observer for ongoing file monitoring
     observer = Observer()
-    observer.schedule(event_handler, path, recursive=True)
+    observer.schedule(tag_finder, path, recursive=True)
     observer.start()
     try:
         while observer.is_alive():
@@ -540,18 +605,23 @@ def execute_command(command: str):
     logger.info(f"Command output {stdout=} {stderr=}")
     return stdout, stderr
 
-def user_interaction_interface(tag_data: TagData, data_lock: threading.Lock):
+def user_interaction_interface(tag_data: TagData, tag_finder: TagFinder):
     logger.info("Starting user interaction interface")
     while True:
+
+        # allow TagFinder to initialize
+        # TODO: use a threading.Event
+        time.sleep(1)
+
+        """
         with data_lock:
             for file, sections in tag_data.items():
                 print(f"{file.name} ({file.path}):")
                 for section in sections:
                     print(f"  - Lines {section.start_line}-{section.end_line}, Label: {section.label}")
-
-        # allow TagFinder to initialize
-        # TODO: use a threading.Event
-        time.sleep(1)
+            tag_data.display_tags()
+        """
+        tag_finder.display_tags()
 
         user_input = input("\nSelect a section by typing the file name and line range, or type 'exit': ")
         logger.info(f"User input {user_input=}")
@@ -586,17 +656,20 @@ def main():
     if not os.path.isdir(args.source_dir):
         raise ValueError(f"The provided path '{args.source_dir}' is not a directory.")
 
+    # TODO: remove
     tag_data: TagData = {}
+
     data_lock = threading.Lock()
 
-    watcher_thread = threading.Thread(target=watch_directory, args=(args.source_dir, tag_data, data_lock))
+    tag_finder = TagFinder(tag_data, data_lock)
+    watcher_thread = threading.Thread(target=watch_directory, args=(args.source_dir, tag_data, data_lock, tag_finder))
     watcher_thread.start()
 
     if args.exec:
         monitor_thread = threading.Thread(target=monitor_output, args=(args.exec,))
         monitor_thread.start()
 
-    user_interaction_interface(tag_data, data_lock)
+    user_interaction_interface(tag_data, tag_finder)
 
 # message data model
 
@@ -649,6 +722,7 @@ def generate_dynamic_prompt(input_str, desired_output, context):
         # Logic to generate prompt dynamically
         # Save to a template or database for reuse
         pass
+#|close:main
 
 
 # TODO: llmstatemachine?
