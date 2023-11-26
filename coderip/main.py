@@ -651,6 +651,8 @@ def generate_dynamic_prompt(input_str, desired_output, context):
         pass
 
 
+# TODO: llmstatemachine?
+"""
 # build the workflow agent
 
 from llmstatemachine.workflow_agent import WorkflowAgentBuilder, set_next_state
@@ -672,6 +674,7 @@ builder.add_state_and_transitions("WatchingFiles", {watch_files_func})
 # ... add other states and transitions ...
 
 workflow_agent = builder.build()
+"""
 
 
 
