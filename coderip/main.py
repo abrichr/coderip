@@ -86,7 +86,7 @@ Define and encode what "developing with an LLM" is into decomposable stages.
     - dynamic
         e.g. "what sections in the source code should we modify next to implement the user's goal?
              user_goal = ask_user("what should we do next?")
-        e.g. "implement a state machine. here are the states and transition functions: ..."""
+        e.g. "implement a state machine. here are the states and transition functions: ..."
         e.g. "take the output from the previous message and extract the following json:
 - Loop:
     - get_next_action
@@ -359,7 +359,6 @@ Action:
         - "Let's implement the code described by this design:"
     - new/edit design
         - "Let's think about how to implement a new feature:"
-	- V
 
 Message:
     - action
