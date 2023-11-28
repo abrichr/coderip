@@ -61,6 +61,36 @@ Logging: Detailed logging for debugging and tracking application flow.
 4. Diff before/after, merge/reject (with comment)
 5. Eventually: restore dialog/code to previous state
 
+---
+
+Prompt Flow:
+---
+
+1. user_code + stdout_stderr + user_request -> user_request_response
+    ###
+    Here is latest code:
+        <<__code__>>
+    Here is latest output:
+        <<__output__>>
+    [Here is the user's request:]
+        > [e.g.] Pease identify and fix the bug.
+        > <arbitrary user request>
+        [include all relevant user requests]
+        [i.e. user-app dialog releavn for app-model dialog (user -> app -> model)]]
+    [Please modify the code to implement the user's request.]
+    ###
+
+2. user request response -> code lines
+    ###
+    Here is the latest code (with line numbers):
+        <<__code_with_line_numbers__>>
+    Here is the latest update:
+        <<__user_request_response__>>
+    Please return tag-wrapped code sections (or diff) that will be used to create the next version of hte code, and nothing else.
+
+    - accumulate 
+    - ...
+
 --
 
 ## Notes
@@ -430,30 +460,37 @@ class CodeSection:
 
 TagData = Dict[File, List[CodeSection]]
 
+#|open:tagfinder
 class TagFinder(FileSystemEventHandler):
-    def __init__(self, tag_data: TagData, data_lock: threading.Lock):
-        logger.info(f"Initializing TagFinder {tag_data=} {data_lock=}")
+    def __init__(self):
+        logger.info(f"Initializing TagFinder")
         super().__init__()
-        self.tag_data = tag_data
-        self.data_lock = data_lock
+        self.tag_data: TagData = {}
+        self.data_lock = threading.Lock()
+
+        self.display_tags_timer = threading.Timer(5.0, lambda: None)
+        self.display_tags_timer.start()
+
+        self.initial_scan_completed = False
 
     def scan_directory(self, directory_path: str):
-        """Scans the entire directory and updates tags for all files."""
+        """Scans the entire directory and updates tags for all files without displaying each update."""
         for root, _, files in os.walk(directory_path):
             for file in files:
                 file_path = os.path.join(root, file)
                 self.update_tags(file_path)
+        self.initial_scan_completed = True
 
     def on_modified(self, event):
-        logger.info(f"File modified {event=}")
+        logger.debug(f"File modified {event=}")
         if not event.is_directory:
             self.update_tags(event.src_path)
 
-    def update_tags(self, file_path: str):
-        # Convert to a consistent relative file path format
-        relative_path = os.path.relpath(file_path)
+        # Display tags once after the modification
+        self.display_tags()
 
-        logger.info(f"Updating tags for {relative_path}")
+    def update_tags(self, file_path: str):
+        relative_path = os.path.relpath(file_path)
 
         if not os.path.exists(file_path) or file_path.endswith('.lock') or '.git' in file_path:
             return
@@ -465,73 +502,90 @@ class TagFinder(FileSystemEventHandler):
             logger.warning(f"Skipping non-text file: {relative_path}")
             return
 
+        logger.info(f"Updating tags for {relative_path}")
+
+        file_key = File(path=relative_path, name=os.path.basename(relative_path))
         sections = []
-        start_line = None
-        start_label = None
+        tag_stack = []
 
         for i, line in enumerate(lines):
             open_tag_match = re.match(r'#\|open(?:\:(\w+))?', line)
             close_tag_match = re.match(r'#\|close(?:\:(\w+))?', line)
 
             if open_tag_match:
-                start_line = i + 1  # Line numbers are 1-indexed
-                start_label = open_tag_match.group(1)
-            elif close_tag_match and start_line is not None and start_label == close_tag_match.group(1):
-                sections.append(CodeSection(start_line, i + 1, start_label or ''))
-                start_line = None
-                start_label = None
+                tag_stack.append((i + 1, open_tag_match.group(1)))  # Line numbers are 1-indexed
+            elif close_tag_match:
+                label = close_tag_match.group(1)
+                for j in range(len(tag_stack) - 1, -1, -1):  # Iterate backwards
+                    start_line, start_label = tag_stack[j]
+                    if start_label == label:
+                        sections.append(CodeSection(start_line, i, label))
+                        tag_stack.pop(j)
+                        break
 
         with self.data_lock:
-            # Clearing old tags for the file before updating
-            file_key = File(path=relative_path, name=os.path.basename(relative_path))
             self.tag_data[file_key] = sections
-
             logger.debug(f"Updated tag_data for {relative_path}: {sections}")
+
+        self.schedule_display_tags()
+
+    def schedule_display_tags(self):
+        self.display_tags_timer.cancel()
+        self.display_tags_timer = threading.Timer(1.0, self.display_tags)
+        self.display_tags_timer.start()
 
     def display_tags(self, show_empty=False):
         """Displays a formatted representation of tag data with color coding."""
-        print("\n+------------------+\n| Available tags:  |\n+------------------+")
+        with self.data_lock:
 
-        if not self.tag_data:
-            msg = (
-                "No tags found. Add"
-                " '#|open[:<label>[.<id>]]' /"
-                " '#|close[:<label>[.<id>]]'"
-                " tags to your code."
-            )
-            print(msg)
+            # Check if there are any tags to display before printing the header
+            if not any(self.tag_data.values()) and not show_empty:
+                return  # Skip displaying if there are no tags and show_empty is False
 
-        for file, sections in self.tag_data.items():
-            if not sections and not show_empty:
-                continue  # Skip files without tags if show_empty is False
+            print("\n+------------------+\n| Available tags:  |\n+------------------+")
 
-            # Color coding for file path and name
-            path_display = f"{Fore.BLUE}{file.path}{Style.RESET_ALL}"
-            name_display = f"{Fore.GREEN}{file.name}{Style.RESET_ALL}"
+            if not self.tag_data:
+                msg = (
+                    "No tags found. Add"
+                    " '#|open[:<label>[.<id>]]' /"
+                    " '#|close[:<label>[.<id>]]'"
+                    " tags to your code."
+                )
+                print(msg)
 
-            print(f"\n{path_display} ({name_display}):")
+            for file, sections in self.tag_data.items():
+                if not sections and not show_empty:
+                    continue  # Skip files without tags if show_empty is False
 
-            for section in sections:
-                # Color coding for lines and labels
-                lines_display = f"{Fore.MAGENTA}Lines {section.start_line}-{section.end_line}{Style.RESET_ALL}"
-                label_display = f"{Fore.YELLOW}Label: {section.label}{Style.RESET_ALL}"
+                # Color coding for file path and name
+                path_display = f"{Fore.BLUE}{file.path}{Style.RESET_ALL}"
+                name_display = f"{Fore.GREEN}{file.name}{Style.RESET_ALL}"
 
-                print(f"  - {lines_display}, {label_display}")
+                print(f"\n{path_display} ({name_display}):")
 
-    def display_tags_v2(self):
-        # ASCII box and colored output
-        print("+------------------+")
-        print("| Available tags:  |")
-        print("+------------------+")
-        
+                for section in sections:
+                    # Color coding for lines and labels
+                    lines_display = f"{Fore.MAGENTA}Lines {section.start_line}-{section.end_line}{Style.RESET_ALL}"
+                    label_display = f"{Fore.YELLOW}Label: {section.label}{Style.RESET_ALL}"
+
+                    print(f"  - {lines_display}, {label_display}")
+
+    def get_code_by_label(self, label: str) -> str:
+        """Returns the code for a given label."""
         with self.data_lock:
             for file, sections in self.tag_data.items():
-                if sections:  # Only display files with tags
-                    print(f"\n{file.path} ({file.name}):")
-                    for section in sections:
-                        print(f"  - Lines {section.start_line}-{section.end_line}, Label: {section.label}")
+                for section in sections:
+                    if section.label == label:
+                        with open(file.path, 'r') as file:
+                            lines = file.readlines()
+                            # Extract the lines for this section
+                            code_lines = lines[section.start_line - 1:section.end_line - 1]
+                            return ''.join(code_lines)
+        return f"No code found for label: {label}"
 
-def watch_directory(path: str, tag_data: TagData, data_lock: threading.Lock, tag_finder: TagFinder):
+#|close:tagfinder
+
+def watch_directory(path: str, tag_finder: TagFinder):
     logger.info(f"Watching directory {path=}")
 
     # Perform initial scan of the directory
@@ -605,30 +659,27 @@ def execute_command(command: str):
     logger.info(f"Command output {stdout=} {stderr=}")
     return stdout, stderr
 
-def user_interaction_interface(tag_data: TagData, tag_finder: TagFinder):
+def user_interaction_interface(tag_finder: TagFinder):
     logger.info("Starting user interaction interface")
+
+    while not tag_finder.initial_scan_completed:
+        time.sleep(1)  # Sleep for a short interval before checking again
+
     while True:
-
-        # allow TagFinder to initialize
-        # TODO: use a threading.Event
-        time.sleep(1)
-
-        """
-        with data_lock:
-            for file, sections in tag_data.items():
-                print(f"{file.name} ({file.path}):")
-                for section in sections:
-                    print(f"  - Lines {section.start_line}-{section.end_line}, Label: {section.label}")
-            tag_data.display_tags()
-        """
-        tag_finder.display_tags()
+        tag_finder.display_tags_timer.join()  # Wait for the timer to complete after each cycle
 
         user_input = input("\nSelect a section by typing the file name and line range, or type 'exit': ")
         logger.info(f"User input {user_input=}")
         if user_input.lower() == 'exit':
             break
 
-        prompt = f"Generate a command based on the following code section:\n{user_input}"
+        # Retrieve code based on label
+        code_content = tag_finder.get_code_by_label(user_input)
+
+        prompt = f"Generate a command based on the following code section:\n{code_content}"
+
+        # TODO XXX: get user request
+
         model_suggested_command = get_model_response(prompt)
         print(f"\nModel suggests the command: {model_suggested_command}")
         confirm = input("Confirm command (yes/no), provide feedback, or type 'exit': ")
@@ -656,22 +707,19 @@ def main():
     if not os.path.isdir(args.source_dir):
         raise ValueError(f"The provided path '{args.source_dir}' is not a directory.")
 
-    # TODO: remove
-    tag_data: TagData = {}
-
-    data_lock = threading.Lock()
-
-    tag_finder = TagFinder(tag_data, data_lock)
-    watcher_thread = threading.Thread(target=watch_directory, args=(args.source_dir, tag_data, data_lock, tag_finder))
+    tag_finder = TagFinder()
+    watcher_thread = threading.Thread(target=watch_directory, args=(args.source_dir, tag_finder))
     watcher_thread.start()
 
     if args.exec:
         monitor_thread = threading.Thread(target=monitor_output, args=(args.exec,))
         monitor_thread.start()
 
-    user_interaction_interface(tag_data, tag_finder)
+    user_interaction_interface(tag_finder)
+#|close:main
 
 # message data model
+"""
 
 from dataclasses import dataclass
 
@@ -722,7 +770,7 @@ def generate_dynamic_prompt(input_str, desired_output, context):
         # Logic to generate prompt dynamically
         # Save to a template or database for reuse
         pass
-#|close:main
+"""
 
 
 # TODO: llmstatemachine?
