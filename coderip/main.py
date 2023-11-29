@@ -423,7 +423,7 @@ ideas
 
 """
 
-#|open:main
+#|open:all
 import argparse
 import threading
 from colorama import Fore, Style
@@ -447,6 +447,7 @@ log.configure_logging(logger, "INFO")
 
 openai.api_key = config.OPENAI_API_KEY
 
+#|open:types
 @dataclass(frozen=True)
 class File:
     path: str
@@ -459,6 +460,7 @@ class CodeSection:
     label: str
 
 TagData = Dict[File, List[CodeSection]]
+#|close:types
 
 #|open:tagfinder
 class TagFinder(FileSystemEventHandler):
@@ -535,42 +537,29 @@ class TagFinder(FileSystemEventHandler):
         self.display_tags_timer.start()
 
     def display_tags(self, show_empty=False):
-        """Displays a formatted representation of tag data with color coding."""
         with self.data_lock:
-
-            # Check if there are any tags to display before printing the header
-            if not any(self.tag_data.values()) and not show_empty:
-                return  # Skip displaying if there are no tags and show_empty is False
-
-            print("\n+------------------+\n| Available tags:  |\n+------------------+")
-
-            if not self.tag_data:
-                msg = (
-                    "No tags found. Add"
-                    " '#|open[:<label>[.<id>]]' /"
-                    " '#|close[:<label>[.<id>]]'"
-                    " tags to your code."
-                )
-                print(msg)
-
+            # Building a dictionary grouped by tag
+            tag_groups = {}
             for file, sections in self.tag_data.items():
-                if not sections and not show_empty:
-                    continue  # Skip files without tags if show_empty is False
-
-                # Color coding for file path and name
-                path_display = f"{Fore.BLUE}{file.path}{Style.RESET_ALL}"
-                name_display = f"{Fore.GREEN}{file.name}{Style.RESET_ALL}"
-
-                print(f"\n{path_display} ({name_display}):")
-
                 for section in sections:
-                    # Color coding for lines and labels
-                    lines_display = f"{Fore.MAGENTA}Lines {section.start_line}-{section.end_line}{Style.RESET_ALL}"
-                    label_display = f"{Fore.YELLOW}Label: {section.label}{Style.RESET_ALL}"
+                    tag = section.label
+                    if tag not in tag_groups:
+                        tag_groups[tag] = []
+                    tag_groups[tag].append((file, section.start_line, section.end_line))
 
-                    print(f"  - {lines_display}, {label_display}")
+            if not tag_groups and not show_empty:
+                return
 
-    def get_code_by_label(self, label: str) -> str:
+            # Displaying the tags
+            print("\n+------------------+\n| Available tags:  |\n+------------------+")
+            for tag, files in tag_groups.items():
+                print(f"\nTag: {Fore.YELLOW}{tag}{Style.RESET_ALL}")
+                for file, start_line, end_line in files:
+                    path_display = f"{Fore.BLUE}{file.path}{Style.RESET_ALL}"
+                    lines_display = f"{Fore.MAGENTA}Lines {start_line}-{end_line}{Style.RESET_ALL}"
+                    print(f"  - {path_display}, {lines_display}")
+
+    def get_code_by_label(self, label: str, numbered=True) -> str:
         """Returns the code for a given label."""
         with self.data_lock:
             for file, sections in self.tag_data.items():
@@ -580,11 +569,17 @@ class TagFinder(FileSystemEventHandler):
                             lines = file.readlines()
                             # Extract the lines for this section
                             code_lines = lines[section.start_line - 1:section.end_line - 1]
+                            if numbered:
+							    code_lines = [
+                                    f"{i+section.start_line}: {line}"
+                                    for i, line in enumerate(code_lines)
+                                ]
                             return ''.join(code_lines)
         return f"No code found for label: {label}"
 
 #|close:tagfinder
 
+#|open:observe_directory
 def watch_directory(path: str, tag_finder: TagFinder):
     logger.info(f"Watching directory {path=}")
 
@@ -601,7 +596,9 @@ def watch_directory(path: str, tag_finder: TagFinder):
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
+#|close:observe_directory
 
+#|open:monitor_output
 def monitor_output(executable_name: str):
     logger.info(f"Monitoring output {executable_name=}")
     output_data = []
@@ -624,6 +621,7 @@ def monitor_output(executable_name: str):
 
     logger.info(f"Output data=\n{pformat(output_data)}")
     return output_data
+#|close:monitor_output
 
 def get_model_response(prompt: str, model: str = "gpt-4-1106-preview") -> str:
     logger.info(f"Getting model response {prompt=} {model=}")
@@ -659,36 +657,73 @@ def execute_command(command: str):
     logger.info(f"Command output {stdout=} {stderr=}")
     return stdout, stderr
 
+def update_source_files(tag_finder: TagFinder, tags: List[str], modifications: str):
+    # This function needs to parse 'modifications', locate the corresponding sections in the source files,
+    # and replace them with the new code. This can be complex and requires careful implementation.
+    # The complexity arises from the need to accurately map the modifications back to the correct file and line numbers.
+    pass
+
 def user_interaction_interface(tag_finder: TagFinder):
     logger.info("Starting user interaction interface")
 
     while not tag_finder.initial_scan_completed:
-        time.sleep(1)  # Sleep for a short interval before checking again
+        time.sleep(.1)
 
     while True:
-        tag_finder.display_tags_timer.join()  # Wait for the timer to complete after each cycle
+        # Wait for the timer to complete after each cycle
+        tag_finder.display_tags_timer.join()
 
-        user_input = input("\nSelect a section by typing the file name and line range, or type 'exit': ")
+        user_input = input("\nEnter tag(s) to select sections (comma-separated), or type 'exit': ")
         logger.info(f"User input {user_input=}")
+
         if user_input.lower() == 'exit':
             break
+        elif user_input.lower() == 'list':
+            continue
 
-        # Retrieve code based on label
-        code_content = tag_finder.get_code_by_label(user_input)
+        tags = [tag.strip() for tag in user_input.split(',')]
+        code_contents = []
 
-        prompt = f"Generate a command based on the following code section:\n{code_content}"
+        for tag in tags:
+            code_content = tag_finder.get_code_by_label(tag)
+            if code_content:
+                code_contents.append(f"#|open:{tag}>\n{code_content}\n#|close:{tag}")
+            else:
+                print(f"No code found for tag: {tag}")
 
-        # TODO XXX: get user request
+        if not code_contents:
+            continue
 
-        model_suggested_command = get_model_response(prompt)
-        print(f"\nModel suggests the command: {model_suggested_command}")
+        # Join the contents from multiple tags with newlines
+        combined_code_content = "\n".join(code_contents)
+        logger.info(f"\n{combined_code_content}")
+
+        # Ask the user for a specific request or command
+        user_request = input("\nWhat do you want to do with these code sections? (e.g. 'find and fix the bug', 'implement logic so that ...'): ")
+        logger.info(f"User request {user_request=}")
+
+        prompt = f"""Please modify the following code sections as needed:
+```
+{combined_code_content}
+```
+{user_request}"""
+
+        model_suggested_modifications = get_model_response(prompt)
+        print(f"\nModel suggests the following modifications:\n{model_suggested_modifications}")
+
+        """
         confirm = input("Confirm command (yes/no), provide feedback, or type 'exit': ")
-
         if confirm.lower() == 'yes':
             stdout, stderr = execute_command(model_suggested_command)
             print(f"Command output:\n{stdout}")
             if stderr:
                 print(f"Error:\n{stderr}")
+        """
+        # Ask for confirmation before updating the source files
+        confirm = input("Apply these modifications to the source files? (yes/no): ")
+        if confirm.lower() == 'yes':
+            update_source_files(tag_finder, tags, model_suggested_modifications)
+            print("Source files updated with the modifications.")
         elif confirm.lower() == 'exit':
             break
         else:
@@ -697,6 +732,7 @@ def user_interaction_interface(tag_finder: TagFinder):
             new_command = get_model_response(new_prompt)
             print(f"New command based on feedback: {new_command}")
 
+#|open:main
 def main():
     logger.info("Starting main")
     parser = argparse.ArgumentParser()
@@ -717,6 +753,7 @@ def main():
 
     user_interaction_interface(tag_finder)
 #|close:main
+#|close:all
 
 # message data model
 """
